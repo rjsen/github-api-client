@@ -44,5 +44,6 @@ trait GithubApiCodecs
   with HookConfigCodec
   with HookCodec
   with ZonedDateTimeCodec
+  with BranchDetailCodec
 
 object GithubApiCodecs extends GithubApiCodecs
