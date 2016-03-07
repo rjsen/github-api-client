@@ -29,12 +29,14 @@ trait GithubApiCodecs
   with ChangeMetadataCodec
   with MilestoneCodec
   with PullRequestCodec
+  with AssetCodec
   with ReleaseCodec
   with BranchCodec
   with RateLimitCodec
   with PullRequestReviewCommentLinksCodec
   with PullRequestCommentCodec
   with FileCodec
+  with ComparisonCodec
   with StatusCodec
   with CombinedStatusCodec
   with StatusResponseCodec
@@ -46,6 +48,9 @@ trait GithubApiCodecs
   with ZonedDateTimeCodec
   with LanguageStatCodec
   with BranchDetailCodec
-
+  with DeploymentCodec
+  with DeploymentStatusCodec
+  with ReferenceCodec
+  with ReferenceObjectCodec
 
 object GithubApiCodecs extends GithubApiCodecs

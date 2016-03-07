@@ -69,4 +69,19 @@ class WebhookPayloadParserSpec extends BaseSpec {
     WebhookPayloadParser.parsePayload("delete", lines).toOption.value shouldBe a[DeletePayload]
   }
 
+  it should "parse Release payload" in {
+    val lines = loadFile(s"files/release.json")
+    WebhookPayloadParser.parsePayload("release", lines).toOption.value shouldBe a[ReleasePayload]
+  }
+
+  it should "parse Deployment payload" in {
+    val lines = loadFile(s"files/deployment.json")
+    WebhookPayloadParser.parsePayload("deployment", lines).toOption.value shouldBe a[DeploymentPayload]
+  }
+
+  it should "parse Deployment Status payload" in {
+    val lines = loadFile(s"files/deployment_status.json")
+    WebhookPayloadParser.parsePayload("deployment_status", lines).toOption.value shouldBe a[DeploymentStatusPayload]
+  }
+
 }

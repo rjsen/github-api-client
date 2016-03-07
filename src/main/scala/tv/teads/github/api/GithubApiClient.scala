@@ -30,6 +30,10 @@ case class GithubApiClient private[api] (config: GithubApiClientConfig) {
   val teams = new TeamService(config)
   val users = new UserService(config)
   val branches = new BranchService(config)
+  val releases = new ReleaseService(config)
+  val commits = new CommitService(config)
+  val deployments = new DeploymentService(config)
+  val references = new ReferenceService(config)
 
   def clearCache(): Unit = config.client.clearCache()
 }

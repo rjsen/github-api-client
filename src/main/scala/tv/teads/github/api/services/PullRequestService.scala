@@ -1,8 +1,10 @@
 package tv.teads.github.api.services
 
+import java.time.ZonedDateTime
+
 import scala.concurrent.{ExecutionContext, Future}
 
-import com.squareup.okhttp.Request
+import okhttp3.Request
 import io.circe.generic.semiauto._
 import tv.teads.github.api.GithubApiClientConfig
 import tv.teads.github.api.filters._
@@ -12,10 +14,10 @@ import tv.teads.github.api.util._
 import tv.teads.github.api.util.CaseClassToMap._
 
 object PullRequestService {
-  implicit lazy val _headEncoder = deriveFor[Head].encoder
-  implicit lazy val pullRequestBranchParamEncoder = deriveFor[PullRequestBranchParam].encoder
-  implicit lazy val pullRequestIssueParamEncoder = deriveFor[PullRequestIssueParam].encoder
-  implicit lazy val pullRequestEditParamEncoder = deriveFor[PullRequestEditParam].encoder
+  implicit lazy val _headEncoder = deriveEncoder[Head]
+  implicit lazy val pullRequestBranchParamEncoder = deriveEncoder[PullRequestBranchParam]
+  implicit lazy val pullRequestIssueParamEncoder = deriveEncoder[PullRequestIssueParam]
+  implicit lazy val pullRequestEditParamEncoder = deriveEncoder[PullRequestEditParam]
 
   case class Head(author: String, branch: String) {
     override def toString = s"$author:$branch"
@@ -42,6 +44,12 @@ object PullRequestService {
     base:      Option[String]     = None,
     sort:      Option[Sort]       = Some(Sort.created),
     direction: Option[Direction]  = Some(Direction.desc)
+  )
+
+  case class PullRequestCommentFilter(
+    sort:      Option[Sort]          = Some(Sort.created),
+    direction: Option[Direction]     = Some(Direction.desc),
+    since:     Option[ZonedDateTime] = None
   )
 }
 class PullRequestService(config: GithubApiClientConfig) extends GithubService(config) with GithubApiCodecs {
@@ -99,7 +107,7 @@ class PullRequestService(config: GithubApiClientConfig) extends GithubService(co
   def byRepositoryAndNumber(repository: String, number: Long)(implicit ec: ExecutionContext): Future[Option[PullRequest]] =
     fetchOptional[PullRequest](
       s"repos/${config.owner}/$repository/pulls/$number",
-      s"Fethcing pull request #$number for repository $repository failed"
+      s"Fetching pull request #$number for repository $repository failed"
     )
 
   def isMerged(repository: String, number: Int)(implicit ec: ExecutionContext): Future[Boolean] = {
@@ -135,5 +143,18 @@ class PullRequestService(config: GithubApiClientConfig) extends GithubService(co
     fetchAllPages[GHCommit](
       s"repos/${config.owner}/$repository/pulls/$number/commits",
       s"Fetching pull request #$number commits failed"
+    )
+
+  def fetchComment(repository: String, commentId: Long)(implicit ec: ExecutionContext): Future[Option[PullRequestReviewComment]] =
+    fetchOptional[PullRequestReviewComment](
+      s"repos/${config.owner}/$repository/pulls/comments/$commentId",
+      s"Fetching pull request comment #$commentId for repository $repository failed"
+    )
+
+  def fetchComments(repository: String, pullRequestCommentFilter: PullRequestCommentFilter = PullRequestCommentFilter())(implicit ec: ExecutionContext): Future[List[PullRequestReviewComment]] =
+    fetchMultiple[PullRequestReviewComment](
+      s"repos/${config.owner}/$repository/pulls/comments",
+      s"Fetching pull request comments for repository $repository failed",
+      pullRequestCommentFilter.toMapStringified
     )
 }

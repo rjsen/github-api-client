@@ -4,7 +4,7 @@ import java.time.ZonedDateTime
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import com.squareup.okhttp.Request
+import okhttp3.Request
 import io.circe.generic.semiauto._
 import tv.teads.github.api.GithubApiClientConfig
 import tv.teads.github.api.filters._
@@ -14,7 +14,7 @@ import tv.teads.github.api.util._
 import tv.teads.github.api.util.CaseClassToMap._
 
 object IssueService {
-  implicit lazy val issueParamEncoder = deriveFor[IssueParam].encoder
+  implicit lazy val issueParamEncoder = deriveEncoder[IssueParam]
 
   case class IssueParam(
     title:     String,
@@ -72,13 +72,25 @@ class IssueService(config: GithubApiClientConfig) extends GithubService(config) 
     }
   }
 
-  def comment(repository: String, number: Long, comment: String)(implicit ec: ExecutionContext): Future[Boolean] = {
-    val url = s"repos/${config.owner}/$repository/issues/$number/comments"
+  def createComment(repository: String, issueNumber: Long, comment: String)(implicit ec: ExecutionContext): Future[Option[Comment]] = {
+    val url = s"${config.apiUrl}/repos/${config.owner}/$repository/issues/$issueNumber/comments"
     val requestBuilder = new Request.Builder().url(url).post(Map("body" → comment).toJson)
     baseRequest(requestBuilder).map {
-      case response if response.code() == 201 ⇒ true
-      case response ⇒
-        failedRequest(s"Commenting on issue #$number for repository $repository failed", response.code(), false)
+      _.as[Comment].fold(
+        code ⇒ failedRequest(s"Commenting on issue #$issueNumber for repository $repository failed", code, None),
+        decodedResponse ⇒ Some(decodedResponse.decoded)
+      )
+    }
+  }
+
+  def editComment(repository: String, issueNumber: Long, commentId: Long, comment: String)(implicit ec: ExecutionContext): Future[Option[Comment]] = {
+    val url = s"${config.apiUrl}/repos/${config.owner}/$repository/issues/$issueNumber/comments/$commentId"
+    val requestBuilder = new Request.Builder().url(url).patch(Map("body" → comment).toJson)
+    baseRequest(requestBuilder).map {
+      _.as[Comment].fold(
+        code ⇒ failedRequest(s"Editing comment #$commentId on issue #$issueNumber for repository $repository failed", code, None),
+        decodedResponse ⇒ Some(decodedResponse.decoded)
+      )
     }
   }
 
@@ -99,5 +111,23 @@ class IssueService(config: GithubApiClientConfig) extends GithubService(config) 
     fetchOptional[Issue](
       s"repos/${config.owner}/$repository/issues/$number",
       s"Fetching issue #$number for repository $repository failed"
+    )
+
+  def fetchComment(repository: String, number: Long)(implicit ec: ExecutionContext): Future[Option[Comment]] =
+    fetchOptional[Comment](
+      s"repos/${config.owner}/$repository/issues/comments/$number",
+      s"Fetching issue #$number for repository $repository failed"
+    )
+
+  def fetchIssueComments(repository: String, number: Long)(implicit ec: ExecutionContext): Future[List[Comment]] =
+    fetchMultiple[Comment](
+      s"repos/${config.owner}/$repository/issues/$number/comments",
+      s"Fetching issue #$number comments for repository $repository failed"
+    )
+
+  def fetchComments(repository: String)(implicit ec: ExecutionContext): Future[List[Comment]] =
+    fetchMultiple[Comment](
+      s"repos/${config.owner}/$repository/issues/comments",
+      s"Fetching issues comments for repository $repository failed"
     )
 }
